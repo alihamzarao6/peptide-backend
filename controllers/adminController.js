@@ -72,6 +72,7 @@ const createPeptide = async (req, res) => {
   try {
     const peptideData = req.body;
 
+    // Generate slug if not provided
     if (!peptideData.slug && peptideData.name) {
       peptideData.slug = peptideData.name
         .toLowerCase()
@@ -79,7 +80,7 @@ const createPeptide = async (req, res) => {
         .replace(/(^-|-$)/g, "");
     }
 
-    // Filter out empty arrays
+    // Filter out empty arrays and invalid data
     if (peptideData.dosages) {
       peptideData.dosages = peptideData.dosages.filter((d) => d && d.trim());
     }
@@ -93,8 +94,31 @@ const createPeptide = async (req, res) => {
           r.retailer_name &&
           r.affiliate_url &&
           r.size &&
-          r.price
+          r.price > 0
       );
+    }
+
+    // Validate required fields
+    if (
+      !peptideData.name ||
+      !peptideData.category ||
+      !peptideData.description
+    ) {
+      return res.status(400).json({
+        message: "Name, category, and description are required",
+      });
+    }
+
+    if (!peptideData.dosages || peptideData.dosages.length === 0) {
+      return res.status(400).json({
+        message: "At least one dosage is required",
+      });
+    }
+
+    if (!peptideData.retailers || peptideData.retailers.length === 0) {
+      return res.status(400).json({
+        message: "At least one retailer is required",
+      });
     }
 
     const peptide = new Peptide(peptideData);
@@ -102,12 +126,27 @@ const createPeptide = async (req, res) => {
 
     res.status(201).json({ message: "Peptide created successfully", peptide });
   } catch (error) {
+    console.error("Create peptide error:", error);
+
     if (error.code === 11000) {
-      return res.status(400).json({ message: "Peptide name already exists" });
+      // Duplicate key error
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        message: `A peptide with this ${field} already exists`,
+      });
     }
-    res
-      .status(500)
-      .json({ message: "Error creating peptide", error: error.message });
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        message: `Validation error: ${messages.join(", ")}`,
+      });
+    }
+
+    res.status(500).json({
+      message: "Error creating peptide",
+      error: error.message,
+    });
   }
 };
 
