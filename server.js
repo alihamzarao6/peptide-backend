@@ -18,6 +18,14 @@ mongoose.connect(process.env.MONGODB_URI, {
   useUnifiedTopology: true,
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Server is running",
+    timestamp: new Date(),
+  });
+});
+
 // Routes
 app.use("/api", require("./routes/peptides"));
 app.use("/api/admin", require("./routes/admin"));
@@ -41,12 +49,14 @@ mongoose.connection.once("open", async () => {
 
   const adminCount = await Admin.countDocuments();
   if (adminCount === 0) {
-    const hashedPassword = await bcrypt.hash("admin123!", 10);
+    const hashedPassword = await bcrypt.hash(
+      `${process.env.ADMIN_PASSWORD}`,
+      10
+    );
     await Admin.create({
-      email: "admin@peptideprice.com",
+      email: `${process.env.ADMIN_EMAIL}`,
       password: hashedPassword,
     });
-    console.log("✅ Default admin created: admin@peptideprice.com / admin123!");
   }
 
   app.listen(PORT, () => {
