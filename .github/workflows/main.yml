@@ -10,10 +10,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
@@ -22,14 +22,16 @@ jobs:
       run: npm ci
 
     - name: Deploy to server
-      uses: appleboy/ssh-action@v0.1.5
+      uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
+        port: 22
         script: |
           cd /var/www/peptidedeals/backend
           git pull origin main || git pull origin master
           npm install --production
           pm2 restart peptide-backend
           pm2 save
+          echo "Backend deployment completed successfully"
