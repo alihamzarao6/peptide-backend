@@ -18,7 +18,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   useUnifiedTopology: true,
 });
 
-app.get("/health", (req, res) => {
+app.get("/", (req, res) => {
   res.status(200).json({
     status: "ok",
     message: "Server is running",
