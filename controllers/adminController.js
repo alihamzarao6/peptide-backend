@@ -87,15 +87,35 @@ const createPeptide = async (req, res) => {
     if (peptideData.tags) {
       peptideData.tags = peptideData.tags.filter((t) => t && t.trim());
     }
-    if (peptideData.retailers) {
-      peptideData.retailers = peptideData.retailers.filter(
-        (r) =>
-          r.retailer_id &&
-          r.retailer_name &&
-          r.affiliate_url &&
-          r.size &&
-          r.price > 0
+    if (peptideData.manualGoals) {
+      peptideData.manualGoals = peptideData.manualGoals.filter(
+        (g) => g && g.trim()
       );
+    }
+
+    // Validate and filter retailers with variants
+    if (peptideData.retailers) {
+      peptideData.retailers = peptideData.retailers.filter((retailer) => {
+        // Filter out retailers without basic info
+        if (
+          !retailer.retailer_id ||
+          !retailer.retailer_name ||
+          !retailer.affiliate_url
+        ) {
+          return false;
+        }
+
+        // Filter out variants without size and price
+        if (retailer.variants) {
+          retailer.variants = retailer.variants.filter(
+            (variant) =>
+              variant.size && variant.size.trim() && variant.price > 0
+          );
+        }
+
+        // Only keep retailers that have at least one valid variant
+        return retailer.variants && retailer.variants.length > 0;
+      });
     }
 
     // Validate required fields
@@ -117,7 +137,7 @@ const createPeptide = async (req, res) => {
 
     if (!peptideData.retailers || peptideData.retailers.length === 0) {
       return res.status(400).json({
-        message: "At least one retailer is required",
+        message: "At least one retailer with valid variants is required",
       });
     }
 

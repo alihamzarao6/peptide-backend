@@ -1,18 +1,24 @@
 const mongoose = require("mongoose");
 
+// Updated retailer variant schema
+const retailerVariantSchema = new mongoose.Schema({
+  size: { type: String, required: true }, // e.g., "5mg", "10mg"
+  price: { type: Number, required: true, min: 0 },
+  discount_percentage: { type: Number, min: 0, max: 100, default: 0 },
+  discounted_price: { type: Number, min: 0 }, // Auto-calculated
+  stock: { type: Boolean, default: true },
+  coupon_code: { type: String },
+});
+
+// Updated retailer schema with variants array
 const retailerSchema = new mongoose.Schema({
   retailer_id: { type: String, required: true },
   retailer_name: { type: String, required: true },
   product_id: { type: String },
-  price: { type: Number, required: true, min: 0 },
-  discounted_price: { type: Number, min: 0 },
-  discount_percentage: { type: Number, min: 0, max: 100 },
-  stock: { type: Boolean, default: true },
   rating: { type: Number, default: 4.5, min: 1, max: 5 },
   review_count: { type: Number, default: 0, min: 0 },
   affiliate_url: { type: String, required: true },
-  coupon_code: { type: String },
-  size: { type: String, required: true },
+  variants: [retailerVariantSchema], // Array of size/price variants
 });
 
 const peptideSchema = new mongoose.Schema(
@@ -34,8 +40,9 @@ const peptideSchema = new mongoose.Schema(
     frequency: { type: String },
     dosageNotes: { type: String },
 
-    // Stack Builder Data
+    // Stack Builder Data - Enhanced with manual goals
     recommendedForGoals: [{ type: String }],
+    manualGoals: [{ type: String }], // NEW: Manual goal input
     stackDifficulty: {
       type: String,
       enum: ["Beginner", "Intermediate", "Advanced"],
@@ -44,7 +51,7 @@ const peptideSchema = new mongoose.Schema(
     stackTiming: { type: String },
     stackDuration: { type: Number, default: 8 },
 
-    // Retailers
+    // Retailers with variants
     retailers: [retailerSchema],
 
     // Status
@@ -52,6 +59,17 @@ const peptideSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Pre-save middleware to calculate discounted prices
+retailerVariantSchema.pre("save", function (next) {
+  if (this.discount_percentage && this.discount_percentage > 0 && this.price) {
+    this.discounted_price = this.price * (1 - this.discount_percentage / 100);
+    this.discounted_price = Math.round(this.discounted_price * 100) / 100; // Round to 2 decimals
+  } else {
+    this.discounted_price = undefined;
+  }
+  next();
+});
 
 // Generate slug before saving
 peptideSchema.pre("save", function (next) {
